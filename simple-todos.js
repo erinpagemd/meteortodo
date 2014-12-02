@@ -27,18 +27,10 @@ if (Meteor.isClient) {
     "submit .new-task": function(event){
       var text = event.target.text.value;
 
-      Tasks.insert({
-        text: text,
-        createdAt: new Date(),                //current time
-        owner: Meteor.userId(),              //_id of logged in user
-        username: Meteor.user().username    //username of logged in user
-      });
+      Meteor.call("addTask", text);
 
       //clear form
       event.target.text.value = "";
-
-      //prevent default form submit
-      return false;
     },
 
     "change .hide-completed input": function(event){
@@ -62,24 +54,25 @@ if (Meteor.isClient) {
   });
 }
 
+// At the bottom of simple-todos.js, outside of the client-only block
 Meteor.methods({
-  addTask: function(text){
-    //make sure the user is logged in before inserting a task
-    if (! Meteor.userID()){
+  addTask: function (text) {
+    // Make sure the user is logged in before inserting a task
+    if (! Meteor.userId()) {
       throw new Meteor.Error("not-authorized");
     }
 
     Tasks.insert({
-      text: text;
+      text: text,
       createdAt: new Date(),
       owner: Meteor.userId(),
       username: Meteor.user().username
     });
   },
-  deleteTask: function(taskID){
-    Tasks.remove(taskID);
+  deleteTask: function (taskId) {
+    Tasks.remove(taskId);
   },
-  setChecked: function(taskID, setChecked){
-    Tasks.update(taskID, { $set: {checked: setChecked}});
+  setChecked: function (taskId, setChecked) {
+    Tasks.update(taskId, { $set: { checked: setChecked} });
   }
 });
