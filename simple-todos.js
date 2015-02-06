@@ -2,6 +2,8 @@ Tasks = new Mongo.Collection("tasks");
 
 if (Meteor.isClient) {
   // This code only runs on the client
+  Meteor.subscribe("tasks");
+
   Template.body.helpers({
     tasks: function(){
       if (Session.get("hideCompleted")){
@@ -39,12 +41,22 @@ if (Meteor.isClient) {
 
   });
 
+  Template.task.helpers({
+    isOwner: function(){
+      return this.owner === Meteor.userID();
+    }
+  });
+
   Template.task.events({
+    "click .toggle-private": function(){
+      Meteor.call("setPrivate", this._id, ! this.private);
+    },
+
     "click .toggle-checked": function(){
       //set the checked property to the opposite of its current value
       Meteor.call("setChecked", this._id, ! this.checked);
     },
-    
+
     "click .delete": function(){
       Meteor.call("deleteTask", this._id);
     }
@@ -57,6 +69,16 @@ if (Meteor.isClient) {
 
 // At the bottom of simple-todos.js, outside of the client-only block
 Meteor.methods({
+  setPrivate: function(taskId, setToPrivate){
+    var task = Tasks.findOne(taskId);
+
+    if(task.owner !== Meteor.userId()){
+      throw new Meteor.Error("not-authorized");
+    }
+
+    Tasks.update(taskId, {$set: {private: setToPrivate}});
+  },
+
   addTask: function (text) {
     // Make sure the user is logged in before inserting a task
     if (! Meteor.userId()) {
@@ -77,3 +99,15 @@ Meteor.methods({
     Tasks.update(taskId, { $set: { checked: setChecked} });
   }
 });
+
+if(Meteor.isServer){
+  //only publish tasks that are public or belong to the current user
+  Meteor.publish("tasks", function(){
+    return Tasks.find({
+      $or: [
+        {private: {$ne: true}},
+        {owner: this.userId}
+      ]
+    });
+  });
+}
